@@ -1163,6 +1163,11 @@ function buildParams(
 	providerThinkingLevel: AnthropicEffort | undefined;
 } {
 	const { cacheControl } = getCacheControl(model, options?.cacheRetention, options?.env);
+	// The conversation's breakpoint may keep a shorter TTL than the tools and system prompt (see
+	// ProviderStreamOptions.conversationCacheRetention). "none" there means no breakpoint on the messages.
+	const conversationCacheControl = options?.conversationCacheRetention
+		? getCacheControl(model, options.conversationCacheRetention, options?.env).cacheControl
+		: cacheControl;
 	const compat = getAnthropicCompat(model);
 	const initialSystemMessage = getInitialSystemMessage(context.messages);
 	const initialSystemText = initialSystemMessage ? getSystemMessageText(initialSystemMessage) : "";
@@ -1201,7 +1206,7 @@ function buildParams(
 	const converted = convertMessages(
 		conversationMessages,
 		isOAuthToken,
-		cacheControl,
+		conversationCacheControl,
 		compat.allowEmptySignature,
 		effortMessages ? model.provider : undefined,
 		nativeToolChanges ? convertToolDefinitions : undefined,

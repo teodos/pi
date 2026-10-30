@@ -250,6 +250,15 @@ export interface StreamOptions extends ProviderRequestOptions<Model<Api>> {
 	 */
 	cacheRetention?: CacheRetention;
 	/**
+	 * Cache retention for the conversation's own breakpoint (the last message), when it should differ from
+	 * `cacheRetention`, which the tools and the system prompt keep. An agent that takes a turn every few seconds
+	 * wants the shared prefix kept for an hour and the moving tail for five minutes: the tail is rewritten on
+	 * every turn, and a 5m write costs 1.25x the input price where a 1h write costs 2x. Anthropic requires 1h
+	 * breakpoints to precede 5m ones; the request order (tools, system, messages) satisfies that.
+	 * Default: the value of `cacheRetention`.
+	 */
+	conversationCacheRetention?: CacheRetention;
+	/**
 	 * Optional session identifier for providers that support session-based caching.
 	 * Providers can use this to enable prompt caching, request routing, or other
 	 * session-aware features. Ignored by providers that don't support it.

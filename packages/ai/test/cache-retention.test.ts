@@ -164,6 +164,40 @@ describe("Cache Retention (PI_CACHE_RETENTION)", () => {
 			expect(capturedPayload.system[0].cache_control).toEqual({ type: "ephemeral" });
 		});
 
+		it("should keep 1h on tools and system and 5m on the conversation when conversationCacheRetention is short", async () => {
+			const baseModel = getModel("anthropic", "claude-haiku-4-5");
+			const toolContext = normalizeContext({
+				systemPrompt: "You are a helpful assistant.",
+				messages: [{ role: "user", content: "Hello", timestamp: Date.now() }],
+				tools: [{ name: "echo", description: "Echo", parameters: { type: "object", properties: {} } }],
+			});
+			let capturedPayload: any = null;
+
+			try {
+				const s = streamAnthropic(baseModel, toolContext, {
+					apiKey: "fake-key",
+					cacheRetention: "long",
+					conversationCacheRetention: "short",
+					onPayload: stopAfterPayload((payload) => {
+						capturedPayload = payload;
+					}),
+				});
+
+				for await (const event of s) {
+					if (event.type === "error") break;
+				}
+			} catch {
+				// Expected to fail
+			}
+
+			expect(capturedPayload).not.toBeNull();
+			const taggedTools = capturedPayload.tools.filter((tool: any) => tool.cache_control);
+			expect(taggedTools.map((tool: any) => tool.cache_control)).toEqual([{ type: "ephemeral", ttl: "1h" }]);
+			expect(capturedPayload.system[0].cache_control).toEqual({ type: "ephemeral", ttl: "1h" });
+			const lastUser = [...capturedPayload.messages].reverse().find((message: any) => message.role === "user");
+			expect(lastUser.content.at(-1).cache_control).toEqual({ type: "ephemeral" });
+		});
+
 		it("should omit cache_control when cacheRetention is none", async () => {
 			const baseModel = getModel("anthropic", "claude-haiku-4-5");
 			let capturedPayload: any = null;
